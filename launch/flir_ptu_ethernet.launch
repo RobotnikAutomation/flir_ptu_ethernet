@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<launch>
+
+	<!-- Set namespace -->
+	<!--arg name="id_robot" default="robot"/-->
+
+	<!-- Desired frequency -->
+	<arg name="desired_freq" default="20.0" />
+	<!-- Name of the example of a subscriber -->
+	<arg name="example_subscriber_name" default="example" />
+	<!-- IP adress of the device -->
+	<arg name="ip_address" default="192.168.0.180" />
+
+	<!--group ns="$(arg id_robot)"-->
+
+		<!-- start FlirPtuEthernet node -->
+		<node name="flir_ptu_ethernet" pkg="flir_ptu_ethernet" type="flir_ptu_ethernet_node.py" output="screen" respawn="false">
+			<param name="desired_freq" value="$(arg desired_freq)"/>
+			<param name="example_subscriber_name" value="$(arg example_subscriber_name)"/>
+			<param name="ip_address" value="$(arg ip_address)"/>
+		</node>
+
+	<!--/group-->
+
+</launch>

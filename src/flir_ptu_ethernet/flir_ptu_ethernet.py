@@ -6,6 +6,7 @@ from rcomponent.rcomponent import *
 # Insert here general imports:
 import math
 import urllib
+import json
 
 # Insert here msg and srv imports:
 from std_msgs.msg import String
@@ -54,6 +55,9 @@ class FlirPtuEthernet(RComponent):
     def init_state(self):
         self.data = String()
 
+        self.pan_pos = 0
+        self.tilt_pos = 0
+
         return RComponent.init_state(self)
 
     def ready_state(self):
@@ -68,13 +72,19 @@ class FlirPtuEthernet(RComponent):
         self.data_pub.publish(self.data)
         self.data_stamped_pub.publish(data_stamped)
 
-        # Publish command
+        # Publish command (TODO Only on publication)
 
-        self.pan_pos = 0 # -16799 to 16800
-        self.tilt_pos = 0 # -8999 to 3000
-        self.max_pan_speed = 12000 # -12000 to 12000
-        self.max_tilt_speed = 12000 # -12000 to 12000
-        self.send_ptu_command(self.pan_pos, self.tilt_pos, self.max_pan_speed, self.max_tilt_speed)
+        pan_pos = 0 # -16799 (-167.99º) to 16800 (168.00º)
+        tilt_pos = 0 # -8999 (-89.99º) to 3000 (30.00º)
+        max_pan_speed = 12000 # -12000 to 12000
+        max_tilt_speed = 12000 # -12000 to 12000
+
+        #self.send_ptu_command(pan_pos, tilt_pos, max_pan_speed, max_tilt_speed)
+
+        self.update_position()
+
+        print self.pan_pos
+        print self.tilt_pos
 
         return RComponent.ready_state(self)
 
@@ -82,10 +92,21 @@ class FlirPtuEthernet(RComponent):
     def send_ptu_command(self, pan_pos, tilt_pos, pan_speed, tilt_speed):
         params = urllib.urlencode({'PP': pan_pos, 'TP': tilt_pos, 'PS': pan_speed, 'TS': tilt_speed})
         try:
-            f = urllib.urlopen("http://"+self.ip+"/API/PTCmd", params)
+            ptu_post = urllib.urlopen("http://"+self.ip+"/API/PTCmd", params)
         except IOError, e:
             rospy.logerr('%s:send_ptu_command: %s %s' % (rospy.get_name(), e, self.ip))
-        #print f.read()
+        #print ptu_post.read()
+
+    def update_position(self):
+        pan_param = urllib.urlencode({'PP': ''})
+        tilt_param = urllib.urlencode({'TP': ''})
+        try:
+            pan_post = urllib.urlopen("http://"+self.ip+"/API/PTCmd", pan_param)
+            self.pan_pos = json.load(pan_post)["PP"]
+            tilt_post = urllib.urlopen("http://"+self.ip+"/API/PTCmd", tilt_param)
+            self.tilt_pos = json.load(tilt_post)["TP"]
+        except IOError, e:
+            rospy.logerr('%s:send_ptu_command: %s %s' % (rospy.get_name(), e, self.ip))
 
     def shutdown(self):
         """Shutdowns device

@@ -6,10 +6,11 @@ from rcomponent.rcomponent import *
 # Insert here general imports:
 import math
 import urllib
+import urllib2
 import json
 
 # Insert here msg and srv imports:
-from std_msgs.msg import String
+from std_msgs.msg import Float64, String
 from robotnik_msgs.msg import StringStamped
 
 from std_srvs.srv import Trigger, TriggerResponse
@@ -28,19 +29,23 @@ class FlirPtuEthernet(RComponent):
         """Gets params from param server"""
         RComponent.ros_read_params(self)
 
-        self.example_subscriber_name = rospy.get_param(
-            '~example_subscriber_name', 'example')
-
         self.ip = rospy.get_param(
             '~ip_address', '192.168.0.180')
+        self.max_pan_speed = rospy.get_param(
+            '~max_pan_speed', 120.0) # deg/s
+        self.max_tilt_speed = rospy.get_param(
+            '~max_tilt_speed', 120.0) # deg/s
 
     def ros_setup(self):
         """Creates and inits ROS components"""
 
         RComponent.ros_setup(self)
 
-        self.example_sub = rospy.Subscriber(
-            self.example_subscriber_name, String, self.example_sub_cb)
+        self.pan_pos_sub = rospy.Subscriber(
+            'joint_pan_position_controller/command', Float64, self.pan_pos_sub_cb)
+
+        self.tilt_pos_sub = rospy.Subscriber(
+            'joint_tilt_position_controller/command', Float64, self.tilt_pos_sub_cb)
 
         self.data_pub = rospy.Publisher(
             '~data', String, queue_size=10)
@@ -53,10 +58,17 @@ class FlirPtuEthernet(RComponent):
         return 0
 
     def init_state(self):
-        self.data = String()
+        self.pan_pos = 0 # deg
+        self.tilt_pos = 0 # deg
 
-        self.pan_pos = 0
-        self.tilt_pos = 0
+        self.data = String()
+        self.data.data = "Pan: "+str(self.pan_pos)+", Tilt: "+str(self.tilt_pos)+" (deg)"
+
+        self.max_pan_pos = 168.00 # deg
+        self.min_pan_pos = -167.99 # deg
+        self.max_tilt_pos = 30.00 # deg
+        self.min_tilt_pos = -89.99 # deg
+
 
         return RComponent.init_state(self)
 
@@ -72,41 +84,101 @@ class FlirPtuEthernet(RComponent):
         self.data_pub.publish(self.data)
         self.data_stamped_pub.publish(data_stamped)
 
-        # Publish command (TODO Only on publication)
-
-        pan_pos = 0 # -16799 (-167.99º) to 16800 (168.00º)
-        tilt_pos = 0 # -8999 (-89.99º) to 3000 (30.00º)
-        max_pan_speed = 12000 # -12000 to 12000
-        max_tilt_speed = 12000 # -12000 to 12000
-
-        #self.send_ptu_command(pan_pos, tilt_pos, max_pan_speed, max_tilt_speed)
-
-        self.update_position()
-
-        print self.pan_pos
-        print self.tilt_pos
+        if (self.update_position() == -1):
+            self.switch_to_state(State.EMERGENCY_STATE)
 
         return RComponent.ready_state(self)
 
+    def emergency_state(self):
+        """Actions performed in emergency state"""
+
+        if (self.update_position() == -1):
+            self.switch_to_state(State.EMERGENCY_STATE)
+        else:
+            self.switch_to_state(State.READY_STATE)
+
+        return RComponent.emergency_state(self)
+
 
     def send_ptu_command(self, pan_pos, tilt_pos, pan_speed, tilt_speed):
-        params = urllib.urlencode({'PP': pan_pos, 'TP': tilt_pos, 'PS': pan_speed, 'TS': tilt_speed})
+        params = urllib.urlencode({'PP': pan_pos*100, 'TP': tilt_pos*100, 'PS': pan_speed*100, 'TS': tilt_speed*100})
         try:
-            ptu_post = urllib.urlopen("http://"+self.ip+"/API/PTCmd", params)
+            ptu_post = urllib2.urlopen("http://"+self.ip+"/API/PTCmd", data=params, timeout=2)
         except IOError, e:
-            rospy.logerr('%s:send_ptu_command: %s %s' % (rospy.get_name(), e, self.ip))
-        #print ptu_post.read()
+            rospy.logwarn('%s:update_position: %s %s' % (rospy.get_name(), e, self.ip))
+            return -1
+        except ValueError, e:
+            rospy.logwarn('%s:update_position: %s' % (rospy.get_name(), e))
+        return 0
+
+    def send_pan_pos_command(self, pan_pos):
+        pan_pos = self.clamp(pan_pos, self.min_pan_pos, self.max_pan_pos)
+        params = urllib.urlencode({'PP': pan_pos*100, 'PS': self.max_pan_speed*100})
+        try:
+            ptu_post = urllib2.urlopen("http://"+self.ip+"/API/PTCmd", data=params, timeout=2)
+        except IOError, e:
+            rospy.logwarn('%s:update_position: %s %s' % (rospy.get_name(), e, self.ip))
+            return -1
+        except ValueError, e:
+            rospy.logwarn('%s:update_position: %s' % (rospy.get_name(), e))
+        return 0
+
+    def send_tilt_pos_command(self, tilt_pos):
+        tilt_pos = self.clamp(tilt_pos, self.min_tilt_pos, self.max_tilt_pos)
+        params = urllib.urlencode({'TP': tilt_pos*100, 'TS': self.max_tilt_speed*100})
+        try:
+            ptu_post = urllib2.urlopen("http://"+self.ip+"/API/PTCmd", data=params, timeout=2)
+        except IOError, e:
+            rospy.logwarn('%s:update_position: %s %s' % (rospy.get_name(), e, self.ip))
+            return -1
+        except ValueError, e:
+            rospy.logwarn('%s:update_position: %s' % (rospy.get_name(), e))
+        return 0
+
+    def send_pan_speed_command(self, pan_speed):
+        pan_speed = self.clamp(pan_speed, -self.max_pan_speed, self.max_pan_speed)
+        params = urllib.urlencode({'PS': pan_speed*100})
+        try:
+            ptu_post = urllib2.urlopen("http://"+self.ip+"/API/PTCmd", data=params, timeout=2)
+        except IOError, e:
+            rospy.logwarn('%s:update_position: %s %s' % (rospy.get_name(), e, self.ip))
+            return -1
+        except ValueError, e:
+            rospy.logwarn('%s:update_position: %s' % (rospy.get_name(), e))
+        return 0
+
+    def send_tilt_speed_command(self, tilt_speed):
+        tilt_speed = self.clamp(tilt_speed, -self.max_tilt_speed, self.max_tilt_speed)
+        params = urllib.urlencode({'TS': tilt_speed*100})
+        try:
+            ptu_post = urllib2.urlopen("http://"+self.ip+"/API/PTCmd", data=params, timeout=2)
+        except IOError, e:
+            rospy.logwarn('%s:update_position: %s %s' % (rospy.get_name(), e, self.ip))
+            return -1
+        except ValueError, e:
+            rospy.logwarn('%s:update_position: %s' % (rospy.get_name(), e))
+        return 0
 
     def update_position(self):
         pan_param = urllib.urlencode({'PP': ''})
         tilt_param = urllib.urlencode({'TP': ''})
         try:
-            pan_post = urllib.urlopen("http://"+self.ip+"/API/PTCmd", pan_param)
-            self.pan_pos = json.load(pan_post)["PP"]
-            tilt_post = urllib.urlopen("http://"+self.ip+"/API/PTCmd", tilt_param)
-            self.tilt_pos = json.load(tilt_post)["TP"]
+            pan_post = urllib2.urlopen("http://"+self.ip+"/API/PTCmd", data=pan_param, timeout=2)
+            self.pan_pos = int(json.load(pan_post)["PP"])/100.0
+            tilt_post = urllib2.urlopen("http://"+self.ip+"/API/PTCmd", data=tilt_param, timeout=2)
+            self.tilt_pos = int(json.load(tilt_post)["TP"])/100.0
+            self.data.data = "Pan: "+str(self.pan_pos)+", Tilt: "+str(self.tilt_pos)+" (deg)"
         except IOError, e:
-            rospy.logerr('%s:send_ptu_command: %s %s' % (rospy.get_name(), e, self.ip))
+            rospy.logwarn('%s:update_position: %s %s' % (rospy.get_name(), e, self.ip))
+            return -1
+        except ValueError, e:
+            rospy.logwarn('%s:update_position: %s' % (rospy.get_name(), e))
+        return 0
+
+
+    def clamp(self, n, minn, maxn):
+        return max(min(maxn, n), minn)
+
 
     def shutdown(self):
         """Shutdowns device
@@ -123,8 +195,11 @@ class FlirPtuEthernet(RComponent):
 
         return RComponent.switch_to_state(self, new_state)
 
-    def example_sub_cb(self, msg):
-        rospy.logwarn("Received msg: " + msg.data)
+    def pan_pos_sub_cb(self, msg):
+        self.send_pan_pos_command(msg.data*180/math.pi)
+
+    def tilt_pos_sub_cb(self, msg):
+        self.send_tilt_pos_command(msg.data*180/math.pi)
 
     def example_server_cb(self, req):
         rospy.logwarn("Received srv trigger petition.")

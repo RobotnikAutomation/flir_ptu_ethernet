@@ -47,13 +47,16 @@ class FlirPtuEthernet(RComponent):
         self.tilt_pos_sub = rospy.Subscriber(
             'joint_tilt_position_controller/command', Float64, self.tilt_pos_sub_cb)
 
+        self.pan_speed_sub = rospy.Subscriber(
+            'joint_pan_speed_controller/command', Float64, self.pan_speed_sub_cb)
+
+        self.tilt_speed_sub = rospy.Subscriber(
+            'joint_tilt_speed_controller/command', Float64, self.tilt_speed_sub_cb)
+
         self.data_pub = rospy.Publisher(
             '~data', String, queue_size=10)
         self.data_stamped_pub = rospy.Publisher(
             '~data_stamped', StringStamped, queue_size=10)
-
-        self.example_server = rospy.Service(
-            '~example', Trigger, self.example_server_cb)
 
         return 0
 
@@ -68,7 +71,6 @@ class FlirPtuEthernet(RComponent):
         self.min_pan_pos = -167.99 # deg
         self.max_tilt_pos = 30.00 # deg
         self.min_tilt_pos = -89.99 # deg
-
 
         return RComponent.init_state(self)
 
@@ -201,10 +203,8 @@ class FlirPtuEthernet(RComponent):
     def tilt_pos_sub_cb(self, msg):
         self.send_tilt_pos_command(msg.data*180/math.pi)
 
-    def example_server_cb(self, req):
-        rospy.logwarn("Received srv trigger petition.")
+    def pan_speed_sub_cb(self, msg):
+        self.send_pan_speed_command(msg.data*180/math.pi)
 
-        response = TriggerResponse()
-        response.success = True
-        response.message = "Received srv trigger petition."
-        return response
+    def tilt_speed_sub_cb(self, msg):
+        self.send_tilt_speed_command(msg.data*180/math.pi)

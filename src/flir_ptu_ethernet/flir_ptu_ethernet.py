@@ -12,6 +12,7 @@ import json
 # Insert here msg and srv imports:
 from std_msgs.msg import Float64, String
 from robotnik_msgs.msg import StringStamped
+from sensor_msgs.msg import JointState
 
 from std_srvs.srv import Trigger, TriggerResponse
 
@@ -57,12 +58,16 @@ class FlirPtuEthernet(RComponent):
             '~data', String, queue_size=10)
         self.data_stamped_pub = rospy.Publisher(
             '~data_stamped', StringStamped, queue_size=10)
+        self.joint_state_pub = rospy.Publisher(
+            'joint_states', JointState, queue_size=10)
 
         return 0
 
     def init_state(self):
         self.pan_pos = 0 # deg
         self.tilt_pos = 0 # deg
+        self.pan_speed = 0 # deg
+        self.tilt_speed = 0 # deg
 
         self.data = String()
         self.data.data = "Pan: "+str(self.pan_pos)+", Tilt: "+str(self.tilt_pos)+" (deg)"
@@ -86,8 +91,21 @@ class FlirPtuEthernet(RComponent):
         self.data_pub.publish(self.data)
         self.data_stamped_pub.publish(data_stamped)
 
+        # Publish joint_state
+
         if (self.update_position() == -1):
             self.switch_to_state(State.EMERGENCY_STATE)
+
+        joint_state_msg = JointState()
+        joint_state_msg.header.stamp = rospy.Time.now()
+        joint_state_msg.name.append("robot_flir_ptu_5_pan_joint")
+        joint_state_msg.name.append("robot_flir_ptu_5_tilt_joint")
+        joint_state_msg.position.append(self.pan_pos*math.pi/180.0)
+        joint_state_msg.position.append(self.tilt_pos*math.pi/180.0)
+        joint_state_msg.velocity.append(self.pan_speed*math.pi/180.0)
+        joint_state_msg.velocity.append(self.tilt_speed*math.pi/180.0)
+
+        self.joint_state_pub.publish(joint_state_msg)
 
         return RComponent.ready_state(self)
 
@@ -162,14 +180,21 @@ class FlirPtuEthernet(RComponent):
         return 0
 
     def update_position(self):
-        pan_param = urllib.urlencode({'PP': ''})
-        tilt_param = urllib.urlencode({'TP': ''})
+        pan_pos_param = urllib.urlencode({'PP': ''})
+        tilt_pos_param = urllib.urlencode({'TP': ''})
+        pan_speed_param = urllib.urlencode({'PD': ''})
+        tilt_speed_param = urllib.urlencode({'TD': ''})
         try:
-            pan_post = urllib2.urlopen("http://"+self.ip+"/API/PTCmd", data=pan_param, timeout=2)
-            self.pan_pos = int(json.load(pan_post)["PP"])/100.0
-            tilt_post = urllib2.urlopen("http://"+self.ip+"/API/PTCmd", data=tilt_param, timeout=2)
-            self.tilt_pos = int(json.load(tilt_post)["TP"])/100.0
-            self.data.data = "Pan: "+str(self.pan_pos)+", Tilt: "+str(self.tilt_pos)+" (deg)"
+            pan_pos = urllib2.urlopen("http://"+self.ip+"/API/PTCmd", data=pan_pos_param, timeout=2)
+            self.pan_pos = int(json.load(pan_pos)["PP"])/100.0
+            tilt_pos = urllib2.urlopen("http://"+self.ip+"/API/PTCmd", data=tilt_pos_param, timeout=2)
+            self.tilt_pos = int(json.load(tilt_pos)["TP"])/100.0
+            pan_speed = urllib2.urlopen("http://"+self.ip+"/API/PTCmd", data=pan_speed_param, timeout=2)
+            self.pan_speed = int(json.load(pan_speed)["PD"])/100.0
+            tilt_speed = urllib2.urlopen("http://"+self.ip+"/API/PTCmd", data=tilt_speed_param, timeout=2)
+            self.tilt_speed = int(json.load(tilt_speed)["TD"])/100.0
+            self.data.data = "Pan pos: "+str(self.pan_pos)+", Tilt pos: "+str(self.tilt_pos)
+            self.data.data += ", Pan speed: "+str(self.pan_speed)+", Tilt speed: "+str(self.tilt_speed)+" (degrees)"
         except IOError, e:
             rospy.logwarn('%s:update_position: %s %s' % (rospy.get_name(), e, self.ip))
             return -1

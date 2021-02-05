@@ -23,6 +23,7 @@ catkin_package(
     rospy
     std_msgs
     std_srvs
+    sensor_msgs
     rcomponent
   DEPENDS
 )

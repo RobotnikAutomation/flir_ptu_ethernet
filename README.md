@@ -2,54 +2,65 @@
 
 The flir_ptu_ethernet package, based on RComponent structure. Package for controlling the FLIR PTU using ROS.
 
-## Installation
+---
 
-(Optional)
+## Dependencies
 
+- robotnik_msgs [🔗](https://github.com/RobotnikAutomation/robotnik_msgs/)
 
-## 1 node_name
+```bash
+git clone https://github.com/RobotnikAutomation/robotnik_msgs/
+```
 
-does...
+- rcomponent [🔗](https://github.com/RobotnikAutomation/rcomponent/)
 
-### 1.1 Parameters
+```bash
+git clone https://github.com/RobotnikAutomation/rcomponent/
+```
 
-* ~parameter_name (type, default: value)
-   description
+## ROS
+
+### Parameters
+
+- **desired_freq (double, default: 10.0)**: The frequency of the node.
+
+- **ip_address (string, default: 192.168.0.180)**: The IP address of the device.
+
+- **max_pan_speed (double, default: 120.0)**: The pan speed limit.
+
+- **max_tilt_speed (double, default: 120.0)**: The tilt speed limit.
+
    
-### 1.2 Subscribed Topics
+### Subscribed Topics
 
-* foo/topic_name1 (std_msgs/String)
-  topic_desciption 1
+* **joint_pan_position_controller/command (std_msgs/Float64)**:
+  Topic for send a new pan position goal to the device.
 
-### 1.3 Published Topics
+* **joint_tilt_position_controller/command (std_msgs/Float64)**:
+  Topic for send a new tilt position goal to the device.
 
-* foo/topic_name (std_msgs/String)
-  topic description, including any important rate information
+* **joint_pan_speed_controller/command (std_msgs/Float64)**:
+  Topic for send a new pan velocity to the device.
 
-### 1.4 Services
-* foo/service_name (nav_msgs/GetMap)
-  service description
+* **joint_tilt_speed_controller/command (std_msgs/Float64)**:
+  Topic for send a new tilt velocity to the device.
 
-### 1.5 Services Called
-* foo/service_name (nav_msgs/GetMap)
-  service description
+### Published Topics
 
-### 1.6 Action server
-* foo/service_name (move_base_msgs/MoveBaseAction)
-  Action service description
+* **~state (robotnik_msgs/State)**:
+  Information of the current state of the node.
 
-### 1.7 Action clients called
-* foo/service_name (move_base_msgs/MoveBaseAction)
-  Action service description
+* **~data (std_msgs/String)**:
+  Information of the current position of the device, in degrees.
 
-### 1.8 Required tf Transforms
-* foo → bar
-  description of transform
+* **~data_stamped (robotnik_msgs/StringStamped)**:
+  Same as ~data topic, with a timestamp.
 
-### 1.9 Provided tf Transforms
-* baz → mumble
-  description of transform
+* **joint_states (sensor_msgs/JointState)**:
+  This topic publishes the joint states.
 
-### 1.10 Bringup
+### Bringup
 
-(optional)
+```
+roslaunch flir_ptu_ethernet flir_ptu_ethernet.launch ip_address:=192.168.0.180
+```

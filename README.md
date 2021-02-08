@@ -18,6 +18,12 @@ git clone https://github.com/RobotnikAutomation/robotnik_msgs/
 git clone https://github.com/RobotnikAutomation/rcomponent/
 ```
 
+- robotnik_sensors [🔗](https://github.com/RobotnikAutomation/robotnik_sensors/)
+
+```bash
+git clone https://github.com/RobotnikAutomation/robotnik_sensors/
+```
+
 ---
 
 ## ROS

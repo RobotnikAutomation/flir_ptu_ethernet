@@ -157,7 +157,7 @@ class FlirPtuEthernet(RComponent):
 
     def send_pan_speed_command(self, pan_speed):
         pan_speed = self.clamp(pan_speed, -self.max_pan_speed, self.max_pan_speed)
-        params = urllib.urlencode({'PS': pan_speed*100})
+        params = urllib.urlencode({'PS': pan_speed*100, 'C': 'V'})
         try:
             ptu_post = urllib2.urlopen("http://"+self.ip+"/API/PTCmd", data=params, timeout=2)
         except IOError, e:
@@ -169,7 +169,7 @@ class FlirPtuEthernet(RComponent):
 
     def send_tilt_speed_command(self, tilt_speed):
         tilt_speed = self.clamp(tilt_speed, -self.max_tilt_speed, self.max_tilt_speed)
-        params = urllib.urlencode({'TS': tilt_speed*100})
+        params = urllib.urlencode({'TS': tilt_speed*100, 'C': 'V'})
         try:
             ptu_post = urllib2.urlopen("http://"+self.ip+"/API/PTCmd", data=params, timeout=2)
         except IOError, e:

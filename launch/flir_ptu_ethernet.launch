@@ -9,8 +9,10 @@
 	<!-- IP adress of the device -->
 	<arg name="ip_address" default="192.168.0.180" />
 	<!-- Maximum speed of the device (deg/s) -->
-	<arg name="max_pan_speed" default="120.0" />
-	<arg name="max_tilt_speed" default="120.0" />
+	<arg name="max_pan_speed" default="25.0" />
+	<arg name="max_tilt_speed" default="25.0" />
+	<!-- Flir model (PTU-5, PTU-D48E)-->
+	<arg name="ptu_model" default="PTU-D48E" />
 
 	<!--group ns="$(arg id_robot)"-->
 
@@ -20,6 +22,7 @@
 			<param name="ip_address" value="$(arg ip_address)"/>
 			<param name="max_pan_speed" value="$(arg max_pan_speed)"/>
 			<param name="max_tilt_speed" value="$(arg max_tilt_speed)"/>
+			<param name="ptu_model" value="$(arg ptu_model)"/>
 		</node>
 
 	<!--/group-->

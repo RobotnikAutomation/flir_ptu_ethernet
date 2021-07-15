@@ -10,8 +10,8 @@ import urllib2
 import json
 
 # Insert here msg and srv imports:
-from std_msgs.msg import Float64, String
-from robotnik_msgs.msg import StringStamped
+from std_msgs.msg import Float64
+from robotnik_msgs.msg import PantiltStatus, PantiltStatusStamped
 from sensor_msgs.msg import JointState
 
 from std_srvs.srv import Trigger, TriggerResponse
@@ -56,10 +56,10 @@ class FlirPtuEthernet(RComponent):
         self.tilt_speed_sub = rospy.Subscriber(
             'joint_tilt_speed_controller/command', Float64, self.tilt_speed_sub_cb)
 
-        self.data_pub = rospy.Publisher(
-            '~data', String, queue_size=10)
-        self.data_stamped_pub = rospy.Publisher(
-            '~data_stamped', StringStamped, queue_size=10)
+        self.status_pub = rospy.Publisher(
+            '~status', PantiltStatus, queue_size=10)
+        self.status_stamped_pub = rospy.Publisher(
+            '~status_stamped', PantiltStatusStamped, queue_size=10)
         self.joint_state_pub = rospy.Publisher(
             'joint_states', JointState, queue_size=10)
 
@@ -71,8 +71,9 @@ class FlirPtuEthernet(RComponent):
         self.pan_speed = 0 # deg
         self.tilt_speed = 0 # deg
 
-        self.data = String()
-        self.data.data = "Pan: "+str(self.pan_pos)+", Tilt: "+str(self.tilt_pos)+" (deg)"
+        self.status = PantiltStatus()
+        self.status.pan_pos = self.pan_pos
+        self.status.tilt_pos = self.tilt_pos
 
         self.max_pan_pos = 168.00 # deg
         self.min_pan_pos = -167.99 # deg
@@ -95,14 +96,17 @@ class FlirPtuEthernet(RComponent):
     def ready_state(self):
         """Actions performed in ready state"""
 
-        # Publish topic with data
+        # Publish topic with status
 
-        data_stamped = StringStamped()
-        data_stamped.header.stamp = rospy.Time.now()
-        data_stamped.string = self.data.data
+        status_stamped = PantiltStatusStamped()
+        status_stamped.header.stamp = rospy.Time.now()
+        status_stamped.pantilt.pan_pos = self.status.pan_pos
+        status_stamped.pantilt.tilt_pos = self.status.tilt_pos
+        status_stamped.pantilt.pan_speed = self.status.pan_speed
+        status_stamped.pantilt.tilt_speed = self.status.tilt_speed
 
-        self.data_pub.publish(self.data)
-        self.data_stamped_pub.publish(data_stamped)
+        self.status_pub.publish(self.status)
+        self.status_stamped_pub.publish(status_stamped)
 
         # Publish joint_state
 
@@ -208,10 +212,12 @@ class FlirPtuEthernet(RComponent):
             pan_speed = urllib2.urlopen("http://"+self.ip+"/API/PTCmd", data=pan_speed_param, timeout=2)
             self.pan_speed = int(json.load(pan_speed)["PD"])*self.pan_resolution
             tilt_speed = urllib2.urlopen("http://"+self.ip+"/API/PTCmd", data=tilt_speed_param, timeout=2)
-            self.tilt_speed = int(json.load(tilt_speed)["TD"])*self.tilt_resolution
-            self.data.data = "Pan pos: "+str(self.pan_pos)+", Tilt pos: "+str(self.tilt_pos)
-            self.data.data += ", Pan speed: "+str(self.pan_speed)+", Tilt speed: "+str(self.tilt_speed)+" (degrees)"
-        except IOError as e:
+            self.tilt_speed = int(json.load(tilt_speed)["TD"])/100.0
+            self.status.pan_pos = self.pan_pos
+            self.status.tilt_pos = self.tilt_pos
+            self.status.pan_speed = self.pan_speed
+            self.status.tilt_speed = self.tilt_speed
+        except IOError, e:
             rospy.logwarn('%s:update_position: %s %s' % (rospy.get_name(), e, self.ip))
             return -1
         except ValueError as e:

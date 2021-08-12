@@ -154,25 +154,27 @@ class FlirPtuEthernet(RComponent):
     def send_pan_pos_command(self, pan_pos):
         pan_pos = self.clamp(pan_pos, self.min_pan_pos, self.max_pan_pos)
         params = urllib.urlencode({'PP': pan_pos/self.pan_resolution, 'PS': self.max_pan_speed/self.pan_resolution, 'C': 'I'})
-        try:
-            ptu_post = urllib2.urlopen("http://"+self.ip+"/API/PTCmd", data=params, timeout=2)
-        except IOError as e:
-            rospy.logwarn('%s:update_position: %s %s' % (rospy.get_name(), e, self.ip))
-            return -1
-        except ValueError as e:
-            rospy.logwarn('%s:update_position: %s' % (rospy.get_name(), e))
+        for _ in range(2):
+            try:
+                ptu_post = urllib2.urlopen("http://"+self.ip+"/API/PTCmd", data=params, timeout=2)
+            except IOError as e:
+                rospy.logwarn('%s:update_position: %s %s' % (rospy.get_name(), e, self.ip))
+                return -1
+            except ValueError as e:
+                rospy.logwarn('%s:update_position: %s' % (rospy.get_name(), e))
         return 0
 
     def send_tilt_pos_command(self, tilt_pos):
         tilt_pos = self.clamp(tilt_pos, self.min_tilt_pos, self.max_tilt_pos)
         params = urllib.urlencode({'TP': tilt_pos/self.tilt_resolution, 'TS': self.max_tilt_speed/self.tilt_resolution, 'C': 'I'})
-        try:
-            ptu_post = urllib2.urlopen("http://"+self.ip+"/API/PTCmd", data=params, timeout=2)
-        except IOError as e:
-            rospy.logwarn('%s:update_position: %s %s' % (rospy.get_name(), e, self.ip))
-            return -1
-        except ValueError as e:
-            rospy.logwarn('%s:update_position: %s' % (rospy.get_name(), e))
+        for _ in range(2):
+            try:
+                ptu_post = urllib2.urlopen("http://"+self.ip+"/API/PTCmd", data=params, timeout=2)
+            except IOError as e:
+                rospy.logwarn('%s:update_position: %s %s' % (rospy.get_name(), e, self.ip))
+                return -1
+            except ValueError as e:
+                rospy.logwarn('%s:update_position: %s' % (rospy.get_name(), e))
         return 0
 
     def send_pan_speed_command(self, pan_speed):

@@ -12,6 +12,7 @@ import json
 # Insert here msg and srv imports:
 from std_msgs.msg import Float64
 from robotnik_msgs.msg import PantiltStatus, PantiltStatusStamped
+from robotnik_msgs.msg import ptz
 from sensor_msgs.msg import JointState
 
 from std_srvs.srv import Trigger, TriggerResponse
@@ -55,6 +56,9 @@ class FlirPtuEthernet(RComponent):
 
         self.tilt_speed_sub = rospy.Subscriber(
             'joint_tilt_speed_controller/command', Float64, self.tilt_speed_sub_cb)
+
+        self.ptz_sub = rospy.Subscriber(
+            'ptz/command', ptz, self.ptz_cb)
 
         self.status_pub = rospy.Publisher(
             '~status', PantiltStatus, queue_size=10)
@@ -152,6 +156,7 @@ class FlirPtuEthernet(RComponent):
         return 0
 
     def send_pan_pos_command(self, pan_pos):
+        print(pan_pos)
         pan_pos = self.clamp(pan_pos, self.min_pan_pos, self.max_pan_pos)
         params = urllib.urlencode({'PP': pan_pos/self.pan_resolution, 'PS': self.max_pan_speed/self.pan_resolution, 'C': 'I'})
         for _ in range(2):
@@ -165,6 +170,7 @@ class FlirPtuEthernet(RComponent):
         return 0
 
     def send_tilt_pos_command(self, tilt_pos):
+        print(tilt_pos)
         tilt_pos = self.clamp(tilt_pos, self.min_tilt_pos, self.max_tilt_pos)
         params = urllib.urlencode({'TP': tilt_pos/self.tilt_resolution, 'TS': self.max_tilt_speed/self.tilt_resolution, 'C': 'I'})
         for _ in range(2):
@@ -178,6 +184,7 @@ class FlirPtuEthernet(RComponent):
         return 0
 
     def send_pan_speed_command(self, pan_speed):
+        print(pan_speed)
         pan_speed = self.clamp(pan_speed, -self.max_pan_speed, self.max_pan_speed)
         params = urllib.urlencode({'PS': pan_speed/self.pan_resolution, 'C': 'V'})
         try:
@@ -190,6 +197,7 @@ class FlirPtuEthernet(RComponent):
         return 0
 
     def send_tilt_speed_command(self, tilt_speed):
+        print(tilt_speed)
         tilt_speed = self.clamp(tilt_speed, -self.max_tilt_speed, self.max_tilt_speed)
         params = urllib.urlencode({'TS': tilt_speed/self.tilt_resolution, 'C': 'V'})
         try:
@@ -200,6 +208,38 @@ class FlirPtuEthernet(RComponent):
         except ValueError as e:
             rospy.logwarn('%s:update_position: %s' % (rospy.get_name(), e))
         return 0
+
+    def send_ptz_command(self, msg):
+
+        if msg.mode == 'position':
+
+            print("position")
+
+            if msg.relative == True:
+                print("relative")
+                self.send_pan_pos_command(msg.pan)
+                self.send_tilt_pos_command(msg.tilt)
+            else:
+                print("absolute")
+                self.send_pan_pos_command(msg.pan + self.pan_pos)
+                self.send_tilt_pos_command(msg.tilt + self.tilt_pos) 
+
+        elif msg.mode == 'speed':
+
+            print("speed")
+
+            if msg.relative == True:
+                print("relative")
+                self.send_pan_speed_command(msg.pan)
+                self.send_tilt_speed_command(msg.tilt)
+            else:
+                print("absolute")
+                self.send_pan_speed_command(msg.pan + self.pan_speed)
+                self.send_tilt_speed_command(msg.tilt+ self.tilt_speed)
+
+        else:
+            rospy.logerr('%s:send_ptz_command: %s does not exist' % (rospy.get_name(), msg.mode))
+
 
     def update_position(self):
         pan_pos_param = urllib.urlencode({'PP': ''})
@@ -257,3 +297,10 @@ class FlirPtuEthernet(RComponent):
 
     def tilt_speed_sub_cb(self, msg):
         self.send_tilt_speed_command(msg.data*180/math.pi)
+
+    def ptz_cb(self, msg):
+
+        self.send_ptz_command(msg)
+
+
+

@@ -152,7 +152,7 @@ class FlirPtuEthernet(RComponent):
         self.switch_to_state(State.SHUTDOWN_STATE)
 
     def send_ptu_command(self, pan_pos, tilt_pos, pan_speed, tilt_speed):
-        params = urllib.urlencode({'PP': pan_pos/self.pan_resolution, 'TP': tilt_pos/self.tilt_resolution,'PS': pan_speed/self.pan_resolution, 'TS': tilt_speed/self.tilt_resolution, 'C': 'I'})
+        params = urllib.urlencode({'PP': -pan_pos/self.pan_resolution, 'TP': -tilt_pos/self.tilt_resolution,'PS': pan_speed/self.pan_resolution, 'TS': tilt_speed/self.tilt_resolution, 'C': 'I'})
         try:
             ptu_post = urllib2.urlopen("http://"+self.ip+"/API/PTCmd", data=params, timeout=2)
         except IOError as e:
@@ -164,7 +164,7 @@ class FlirPtuEthernet(RComponent):
 
     def send_pan_pos_command(self, pan_pos):
         pan_pos = self.clamp(pan_pos, self.min_pan_pos, self.max_pan_pos)
-        params = urllib.urlencode({'PP': pan_pos/self.pan_resolution, 'PS': self.max_pan_speed/self.pan_resolution, 'C': 'I'})
+        params = urllib.urlencode({'PP': -pan_pos/self.pan_resolution, 'PS': self.max_pan_speed/self.pan_resolution, 'C': 'I'})
         for _ in range(2):
             try:
                 ptu_post = urllib2.urlopen("http://"+self.ip+"/API/PTCmd", data=params, timeout=2)
@@ -177,7 +177,7 @@ class FlirPtuEthernet(RComponent):
 
     def send_tilt_pos_command(self, tilt_pos):
         tilt_pos = self.clamp(tilt_pos, self.min_tilt_pos, self.max_tilt_pos)
-        params = urllib.urlencode({'TP': tilt_pos/self.tilt_resolution, 'TS': self.max_tilt_speed/self.tilt_resolution, 'C': 'I'})
+        params = urllib.urlencode({'TP': -tilt_pos/self.tilt_resolution, 'TS': self.max_tilt_speed/self.tilt_resolution, 'C': 'I'})
         for _ in range(2):
             try:
                 ptu_post = urllib2.urlopen("http://"+self.ip+"/API/PTCmd", data=params, timeout=2)

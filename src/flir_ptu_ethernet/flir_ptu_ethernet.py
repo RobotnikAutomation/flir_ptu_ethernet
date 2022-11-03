@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+from ast import excepthandler
 from rcomponent.rcomponent import *
 
 # Insert here general imports:
@@ -81,6 +82,7 @@ class FlirPtuEthernet(RComponent):
         self.tilt_speed = 0 # deg
 
         self.last_ptz_msg = ptz()
+        self.last_reset_axis = rospy.Time(0)
 
         self.status = PantiltStatus()
         self.status.pan_pos = self.pan_pos
@@ -140,7 +142,9 @@ class FlirPtuEthernet(RComponent):
     def emergency_state(self):
         """Actions performed in emergency state"""
 
-        if (self.update_position() == -1):
+        if ((rospy.Time.now() - self.last_reset_axis).to_sec() < 12.0):
+            self.switch_to_state(State.EMERGENCY_STATE)
+        elif (self.update_position() == -1):
             self.switch_to_state(State.EMERGENCY_STATE)
         else:
             self.switch_to_state(State.READY_STATE)
@@ -163,17 +167,22 @@ class FlirPtuEthernet(RComponent):
         return 0
 
     def send_pan_pos_command(self, pan_pos):
-        pan_pos = self.clamp(pan_pos, self.min_pan_pos, self.max_pan_pos)
-        params = urllib.urlencode({'PP': -pan_pos/self.pan_resolution, 'PS': self.max_pan_speed/self.pan_resolution, 'C': 'I'})
-        for _ in range(2):
-            try:
-                ptu_post = urllib2.urlopen("http://"+self.ip+"/API/PTCmd", data=params, timeout=2)
-            except IOError as e:
-                rospy.logwarn('%s:update_position: %s %s' % (rospy.get_name(), e, self.ip))
-                return -1
-            except ValueError as e:
-                rospy.logwarn('%s:update_position: %s' % (rospy.get_name(), e))
-        return 0
+        if (self._state == State.READY_STATE):
+            pan_pos = self.clamp(pan_pos, self.min_pan_pos, self.max_pan_pos)
+            params = urllib.urlencode({'PP': -pan_pos/self.pan_resolution, 'PS': self.max_pan_speed/self.pan_resolution, 'C': 'I'})
+            for _ in range(2):
+                try:
+                    ptu_post = urllib2.urlopen("http://"+self.ip+"/API/PTCmd", data=params, timeout=2)
+                except IOError as e:
+                    rospy.logwarn('%s:update_position: %s %s' % (rospy.get_name(), e, self.ip))
+                    self.reset_axes()
+                    return -1
+                except ValueError as e:
+                    rospy.logwarn('%s:update_position: %s' % (rospy.get_name(), e))
+                    return -1
+            return 0
+        else:
+            return -1
 
     def send_tilt_pos_command(self, tilt_pos):
         tilt_pos = self.clamp(tilt_pos, self.min_tilt_pos, self.max_tilt_pos)
@@ -250,17 +259,29 @@ class FlirPtuEthernet(RComponent):
             self.status.tilt_pos = self.tilt_pos
             self.status.pan_speed = self.pan_speed
             self.status.tilt_speed = self.tilt_speed
-        except IOError, e:
+        except IOError as e:
             rospy.logwarn('%s:update_position: %s %s' % (rospy.get_name(), e, self.ip))
             return -1
         except ValueError as e:
             rospy.logwarn('%s:update_position: %s' % (rospy.get_name(), e))
         return 0
 
+    def reset_axes(self):
+        reset = urllib.urlencode({'R': ''})
+        try:
+            urllib2.urlopen("http://"+self.ip+"/API/PTCmd", data=reset, timeout=2)
+            self.last_reset_axis = rospy.Time.now()
+            self.switch_to_state(State.EMERGENCY_STATE)
+        except IOError as e:
+            rospy.logwarn('%s:reset_axes: %s %s' % (rospy.get_name(), e, self.ip))
+            return -1
+        except ValueError as e:
+            rospy.logwarn('%s:reset_axes: %s' % (rospy.get_name(), e))
+        return 0
+
 
     def clamp(self, n, minn, maxn):
         return max(min(maxn, n), minn)
-
 
     def shutdown(self):
         """Shutdowns device

@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package format="2">
   <name>flir_ptu_ethernet</name>
-  <version>0.2.0</version>
+  <version>0.1.0</version>
   <description>The flir_ptu_ethernet package, based on RComponent structure. Package for controlling the FLIR PTU using ROS.</description>
 
   <maintainer email="jgomez@robotnik.es">José Gómez</maintainer>

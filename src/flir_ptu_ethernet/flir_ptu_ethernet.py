@@ -88,10 +88,10 @@ class FlirPtuEthernet(RComponent):
         self.status.pan_pos = self.pan_pos
         self.status.tilt_pos = self.tilt_pos
 
-        self.max_pan_pos = 168.00 # deg
-        self.min_pan_pos = -167.99 # deg
-        self.max_tilt_pos = 30.00 # deg
-        self.min_tilt_pos = -89.99 # deg
+        self.max_pan_pos = 830.00 # deg
+        self.min_pan_pos = -830.99 # deg
+        self.max_tilt_pos = 440.00 # deg
+        self.min_tilt_pos = -110.00 # deg
 
         # Pantilt encoders resolution (deg/pos)
         if (self.ptu_model == "PTU-5"):

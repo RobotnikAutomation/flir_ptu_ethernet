@@ -7,12 +7,12 @@
 	<!-- Desired frequency -->
 	<arg name="desired_freq" default="10.0" />
 	<!-- IP adress of the device -->
-	<arg name="ip_address" default="192.168.0.180" />
+	<arg name="ip_address" default="192.168.0.70" />
 	<!-- Maximum speed of the device (deg/s) -->
 	<arg name="max_pan_speed" default="25.0" />
 	<arg name="max_tilt_speed" default="25.0" />
 	<!-- Flir model (PTU-5, PTU-D48E)-->
-	<arg name="ptu_model" default="PTU-D48E" />
+	<arg name="ptu_model" default="PTU-5" />
 
 	<!--group ns="$(arg id_robot)"-->
 
